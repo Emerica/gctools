@@ -12,7 +12,7 @@ from math import degrees, atan2, sqrt, sin, cos, radians, pi
 REGCODE = re.compile("(([A-Z])((-?[0-9]+)\.?([0-9]+)?))|(\(.*\))")
 
 # Supported parameter words
-PARAMS = ("X", "Y", "Z", "I", "J", "K", "R", "F", "P")
+PARAMS = ("X", "Y", "Z", "I", "J", "K", "R", "F", "P", "S")
 
 #----------------------------------------------------------------------------
 # Public classes
@@ -158,7 +158,7 @@ class GCode(Loader):
     """ Get the minimum of two values allowing for None
     """
     if (a is None) and (b is None):
-      return None
+      return 0
     if (a is None) and (b is not None):
       return b
     if (b is None) and (a is not None):
@@ -169,7 +169,7 @@ class GCode(Loader):
     """ Get the maximum of two values allowing for None
     """
     if (a is None) and (b is None):
-      return None
+      return 0
     if (a is None) and (b is not None):
       return b
     if (b is None) and (a is not None):
@@ -263,7 +263,17 @@ class GCode(Loader):
     drw.line((dx, 0, dx, height), fill = "black", width = 1)
     # Draw the actual image
     x, y, z = 0.0, 0.0, 0.0
+    level = 0
     for cmd in self.lines:
+      if cmd.command in ("M03"):
+        if cmd.S != None:
+            level = int(round((cmd.S/12000) * 255))
+            color = (255,255,255,level)
+        else:
+            color = (0,0,0,0)
+
+      if cmd.command in ("M05"):
+        color = (255,255,255,0)
       if cmd.command in ("G00", "G01", "G02", "G03"):
         # Check for X/Y movement
         nx = cmd.X or x
@@ -276,13 +286,14 @@ class GCode(Loader):
             dy + (pixelsPerMM * ny)
             )
           if cmd.command in ("G00", "G01"):
-            if z < 0.0:
+            if z < 0.1:
               # Cutting movement
-              drw.line(path, fill = "blue", width = 1)
+              print color
+              drw.line(path, fill = color, width = 1)
             elif showall:
               # Positioning
               drw.line(path, fill = "red", width = 1)
-          elif z < 0.0:
+          elif z < 0.1:
             # Draw an arc
             cx, cy = x + cmd.I, y + cmd.J
             r = sqrt(cmd.I ** 2 + cmd.J ** 2)
@@ -407,5 +418,3 @@ if __name__ == "__main__":
   gc2.render("C:\\Shane\\Sandbox\\gctools\\samples\\attiny84_EDGEMILL_GCODE.2.png", showall = True)
   saveGCode("C:\\Shane\\Sandbox\\gctools\\samples\\attiny84_ISOLATION_GCODE.1.ngc", gc2)
   gc3.render("C:\\Shane\\Sandbox\\gctools\\samples\\attiny84_ISOLATION_GCODE.1.png")
-
-
